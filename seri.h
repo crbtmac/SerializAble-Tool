@@ -81,22 +81,22 @@ class Seri {
     private:
         
         bool bigendian;
-		//写数据的缓冲区 
-		std::vector<char>WP;
+        //写数据的缓冲区 
+        std::vector<char>WP;
         
         //读数据的缓存区
         char *RP;   
         
         //序列化数据对象总大小  
         u32 Size;   
-		
-		//用户实际读的数据大小 如果超过Size就溢出了 
+        
+        //用户实际读的数据大小 如果超过Size就溢出了 
         u32 ReadSize;
         
-		//是否溢出
+        //是否溢出
         bool BufferOverflow();
-		
-		//判断系统大小端  大端返回true 小端返回false
+        
+        //判断系统大小端  大端返回true 小端返回false
         bool IsBigEndian(); 
 
 };
