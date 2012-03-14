@@ -20,8 +20,8 @@ typedef unsigned long long u64;
 
 
 
-class Seri {
-    
+class Seri 
+{    
     public:
         Seri();
         ~Seri();

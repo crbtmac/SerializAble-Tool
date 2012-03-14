@@ -29,7 +29,6 @@ struct node: public SerializAble
         cout << d << endl;
     }
     
-    
     void marshal(Seri &seri)
     {
         seri.add_data(a);
@@ -53,8 +52,9 @@ struct node: public SerializAble
     }
 };
 
-int main() {
-    
+int main() 
+{
+    //Seri对象 
     Seri s; 
     
     //要序列化的数据 
