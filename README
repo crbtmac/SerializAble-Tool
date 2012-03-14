@@ -1,0 +1,18 @@
+//***********************
+此序列化工具提供了将基本数据类型和结构化数据转化为字节流存储在内存中。 
+
+Seri对象接口信息: 
+
+.add_data(data):把data加入到Seri对象,目前满足byte(u8),u16,u32,float,u64,double,string,long string,bytes(raw binary bytes),set,array,map,vector.
+
+.read_data(data):从字节流解析出数据存储到data,目前满足byte(u8),u16,u32,float,u64,double,string,long string,bytes(raw binary bytes),set,array,map,vector.
+
+.getdata():返回序列化后的字节流.
+
+.getsize():返回字节流的大小.
+
+.commite():在add_data后调用,表示所有要序列化的数据已经全部添加到Seri对象.
+//***********************
+
+
+结构化数据可以实现interface SerializAble的marshal和unmarshal,具体用法见sample.
