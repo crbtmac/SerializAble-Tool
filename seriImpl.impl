@@ -1,0 +1,361 @@
+#include "seri.h"
+#include <map>
+#include <string>
+#include <vector>
+#include <set>
+#include <assert.h>
+
+Seri:: Seri()
+{
+    if(IsBigEndian() == false)
+    {
+        bigendian = false;    
+    }
+    else
+    {
+        bigendian = true;    
+    }
+    WP.clear();
+    //WP.resize(1024 * 1024 * 100);
+    Size = 0;
+}
+
+Seri:: ~Seri()
+{
+}
+
+char* Seri::getdata()
+{
+    return (RP);    
+}
+
+u32 Seri:: getsize()
+{
+    return Size;    
+}
+
+void Seri::commit()
+{
+    RP = (char *)&WP[0];
+    Size = WP.size();    
+    ReadSize = 0;
+}
+
+//----------------------------------------------------------------------
+
+bool Seri::BufferOverflow()
+{
+    return (ReadSize > Size);    
+}
+
+bool Seri::IsBigEndian() 
+{
+    int i = 1;
+    char *p = (char *)&i;
+    if(*p == 1) 
+    { 
+        //little endian
+        return false; 
+    }
+    //big endian
+    return true;    
+}
+
+//---------------------------------read_data---------------------------------
+
+void inline Seri::read_data(u8 &d)
+{
+    ReadSize++;
+    assert(BufferOverflow() == false);
+    d = *RP;
+    RP++;
+}
+
+
+void inline Seri::read_data(u16 &d)
+{
+    ReadSize += 2;
+    assert(BufferOverflow() == false);
+    d = *((u16*)RP);
+    memcpy(&d, RP, 2);
+    RP += 2;
+    if(bigendian == false)
+    {
+        d = BigtoLittle16(d);    
+    }
+}
+
+void inline Seri::read_data(u32 &d)
+{
+    ReadSize += 4;
+    assert(BufferOverflow() == false);
+    d = *((u32*)RP);
+    RP += 4;
+    if(bigendian == false)
+    {
+        d = BigtoLittle32(d);    
+    }
+}
+
+void inline Seri::read_data(u64 &d)
+{
+    ReadSize += 8;
+    assert(BufferOverflow() == false);
+    d = *((u64*)RP);
+    RP += 8;
+    if(bigendian == false)
+    {
+        char *p = (char *) &d;
+        u32 i = 0;
+        char tmp;
+        for(i = 0; i < 4; ++i)
+        {
+            tmp = *(p + i);
+            *(p + i) = *(p + 7 - i);
+            *(p + 7 - i) = tmp;    
+        }
+    }
+}
+
+void inline Seri::read_data(float &d)
+{
+    ReadSize += 4;
+    assert(BufferOverflow() == false);
+    d = *((float*)RP);
+    RP += 4;
+    if(bigendian == false)
+    {
+        char *p = (char *)&d;
+        u32 i = 0;
+        char tmp;
+        for(i = 0; i < 2; ++i)
+        {
+            tmp = *(p + i);
+            *(p + i) = *(p + 3 - i);
+            *(p + 3 - i) = tmp;        
+        }    
+    }
+} 
+
+void inline Seri::read_data(double &d)
+{
+    ReadSize += 8;
+    assert(BufferOverflow() == false);
+    d = *((double*)RP);
+    RP += 8;
+    if(bigendian == false)
+    {
+        char *p = (char *)&d;
+        u32 i = 0;
+        char tmp;
+        for(i = 0; i < 4; ++i)
+        {
+            tmp = *(p + i);
+            *(p + i) = *(p + 7 - i);
+            *(p + 7 - i) = tmp;        
+        }    
+    }
+}
+
+void inline Seri::read_data(std::string &d)
+{
+    u32 len = 0;
+    Seri::read_data(len);
+    ReadSize += len;
+    assert(BufferOverflow() == false);
+    d.assign(RP, len);
+    RP += len;       
+}
+
+template <typename K, typename V>
+void inline Seri::read_data(std::map<K, V> &hs)
+{
+    u32 size = 0;
+    Seri::read_data(size);
+    K k;
+    V v;
+    u32 i = 0;
+    for(i = 0; i < size; ++i)
+    {
+        Seri::read_data(k);
+        Seri::read_data(v);
+        hs[k] = v;
+    }
+}
+
+template <typename S>
+void inline Seri::read_data(std::set<S> &s)
+{
+    u32 size;
+    Seri::read_data(size);
+    S k;
+    u32 i = 0;
+    for(i = 0; i < size; ++i)
+    {
+        Seri::read_data(k);
+        s.insert(k);   
+    }       
+}
+
+template <typename V>
+void inline Seri::read_data(std::vector<V> &vec)
+{
+    u32 size = 0, i = 0;
+    Seri::read_data(size);
+    for(i = 0; i < size; ++i)
+    {
+        Seri::read_data(vec[i]);
+    }
+}
+
+template <typename arr, u32 size>
+void inline Seri::read_data(arr (&a)[size])
+{
+    u32 len = 0, i = 0;
+    Seri::read_data(len);
+    for(i = 0; i < len; ++i)
+    {
+        Seri::read_data(a[i]);   
+    }
+}
+
+//---------------------------------add_data---------------------------------------------
+void inline Seri:: add_data(const u8 &d)
+{
+    u32 len = WP.size();
+    WP.resize(len + 1);
+    *((u8*)(&WP[Size++])) = d;
+}
+
+void inline Seri:: add_data(const u16 &d)
+{
+    u16 value = d;
+    if(bigendian == false)
+    {
+        value = BigtoLittle16(value);    
+    }
+    u32 len = WP.size();
+    WP.resize(len + 2);
+    *((u16*)(&WP[Size])) = value;
+    Size += 2;
+}
+
+void inline Seri:: add_data(const u32 &d)
+{
+    u32 value = d;
+    if(bigendian == false)
+    {
+        value = BigtoLittle32(value);    
+    }
+    u32 len = WP.size();
+    WP.resize(len + 4);
+    *((u32*)(&WP[Size])) = value; 
+    Size += 4;
+}
+
+void inline Seri:: add_data(const u64 &d)
+{
+    u64 value = d;
+    if(bigendian == false)
+    {
+        char *pp = (char *) &value;
+        char *p = (char *) &d;
+        u32 i = 0;
+        for(i = 0; i < 8; ++i)
+            *(pp + i) = *(p + 7 - i);    
+    }
+    u32 len = WP.size();
+    WP.resize(len + 8);
+    *((u64*)(&WP[Size])) = value; 
+    Size += 8;
+}
+
+
+void inline Seri:: add_data(const float &d)
+{
+    float value = d;
+    if(bigendian == false)
+    {   
+        char *pp = (char*) &value;
+        char *p = (char *)&d;
+        for(int i = 0; i < 4; ++i)
+            *(pp + i) = *(p + 3 - i);
+    }
+    u32 len = WP.size();
+    WP.resize(len + 4);
+    *((float*)(&WP[Size])) = value;
+    Size += 4;
+}
+
+void inline Seri:: add_data(const double &d)
+{
+    double value = d;
+    if(bigendian == false)
+    {   
+        char *pp = (char*) &value;
+        char *p = (char *)&d;
+        for(int i = 0; i < 8; ++i)
+            *(pp + i) = *(p + 7 - i);
+    }
+    u32 len = WP.size();
+    WP.resize(len + 8);
+    *((double*)(&WP[Size])) = value;
+    Size += 8;
+}
+
+void inline Seri:: add_data(const std::string &d)
+{
+    u32 len = d.size();
+    add_data(len);
+    u32 size = WP.size();
+    WP.resize(size + len);
+    strcpy(&WP[Size], (char*)(&d[0]));
+    Size += len;
+}
+
+//map
+template <typename K, typename V>
+void inline Seri::add_data(const std::map<K,V> &hs)
+{
+    add_data((u32)hs.size());
+    for(typename std::map<K,V>:: const_iterator it = hs.begin(); it != hs.end(); ++it) 
+    {
+        add_data(it->first);
+        add_data(it->second);    
+    }    
+}
+
+//set
+template <typename S>
+void inline Seri::add_data(const std::set<S> &s)
+{
+    add_data((u32)s.size());
+    for(typename std::set<S>:: iterator it = s.begin(); it != s.end(); ++it) 
+    {
+        add_data(*it);            
+    }    
+}
+
+//array
+template <typename arr, u32 size>
+void inline Seri::add_data(const arr (&a)[size])
+{
+    add_data((u32)size);
+    u32 i = 0;
+    for(i = 0; i < size; ++i)
+    {
+        add_data(a[i]);    
+    }
+}
+
+//vector
+template <typename V>
+void inline Seri:: add_data(const std::vector<V> &vec)
+{
+    u32 size = vec.size();
+    add_data(size);
+    for(typename std::vector<V>::const_iterator it = vec.begin(); it != vec.end(); ++it)
+    {
+        add_data(*it);    
+    }
+}
